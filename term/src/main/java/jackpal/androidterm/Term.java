@@ -22,8 +22,12 @@ import jackpal.androidterm.compat.ActivityCompat;
 import jackpal.androidterm.compat.AndroidCompat;
 import jackpal.androidterm.compat.MenuItemCompat;
 import jackpal.androidterm.emulatorview.EmulatorView;
+import jackpal.androidterm.emulatorview.FloatingKeyboardView;
+import jackpal.androidterm.emulatorview.TextInputKeyboardView;
+import jackpal.androidterm.emulatorview.TermKeyListener;
 import jackpal.androidterm.emulatorview.TermSession;
 import jackpal.androidterm.emulatorview.UpdateCallback;
+import android.widget.FrameLayout;
 import jackpal.androidterm.emulatorview.compat.ClipboardManagerCompat;
 import jackpal.androidterm.emulatorview.compat.ClipboardManagerCompatFactory;
 import jackpal.androidterm.emulatorview.compat.KeycodeConstants;
@@ -163,6 +167,10 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
     private int mActionBarMode = TermSettings.ACTION_BAR_MODE_NONE;
 
     private WindowListAdapter mWinListAdapter;
+    
+    private FloatingKeyboardView mFloatingKeyboard;
+    private TextInputKeyboardView mTextInputKeyboard;
+    private boolean mUsingTextInputKeyboard = false;
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
@@ -373,6 +381,26 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
 
         setContentView(R.layout.term_activity);
         mViewFlipper = (TermViewFlipper) findViewById(VIEW_FLIPPER);
+        mFloatingKeyboard = (FloatingKeyboardView) findViewById(R.id.floating_keyboard);
+        mTextInputKeyboard = (TextInputKeyboardView) findViewById(R.id.text_input_keyboard);
+        
+        if (mFloatingKeyboard != null) {
+            mFloatingKeyboard.setOnKeyboardStateChangeListener(visible -> {
+                adjustViewFlipperHeight();
+            });
+            mFloatingKeyboard.setOnTextInputToggleListener(() -> {
+                toggleToTextInputKeyboard();
+            });
+        }
+        
+        if (mTextInputKeyboard != null) {
+            mTextInputKeyboard.setOnKeyboardStateChangeListener(visible -> {
+                adjustViewFlipperHeight();
+            });
+            mTextInputKeyboard.setOnFunctionKeyboardToggleListener(() -> {
+                toggleToFunctionKeyboard();
+            });
+        }
 
         PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TermDebug.LOG_TAG);
@@ -452,6 +480,20 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
             }
 
             updatePrefs();
+            
+            if (mTermSessions.size() > 0) {
+                TermSession session = mTermSessions.get(0);
+                EmulatorView view = (EmulatorView) mViewFlipper.getChildAt(0);
+                if (view != null) {
+                    TermKeyListener keyListener = view.getTermSession().getKeyListener();
+                    if (mFloatingKeyboard != null) {
+                        mFloatingKeyboard.attachToSession(session, keyListener);
+                    }
+                    if (mTextInputKeyboard != null) {
+                        mTextInputKeyboard.attachToSession(session, keyListener);
+                    }
+                }
+            }
 
             if (onResumeSelectWindow >= 0) {
                 mViewFlipper.setDisplayedChild(onResumeSelectWindow);
@@ -558,6 +600,21 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
             ((EmulatorView) v).setDensity(metrics);
             ((TermView) v).updatePrefs(mSettings);
         }
+        
+        if (mFloatingKeyboard != null && mTermSessions != null) {
+             int currentIndex = mViewFlipper.getDisplayedChild();
+             if (currentIndex >= 0 && currentIndex < mTermSessions.size()) {
+                 TermSession session = mTermSessions.get(currentIndex);
+                 EmulatorView view = (EmulatorView) mViewFlipper.getChildAt(currentIndex);
+                 if (view != null) {
+                     TermKeyListener keyListener = view.getTermSession().getKeyListener();
+                     mFloatingKeyboard.attachToSession(session, keyListener);
+                     if (mTextInputKeyboard != null) {
+                         mTextInputKeyboard.attachToSession(session, keyListener);
+                     }
+                 }
+             }
+         }
 
         if (mTermSessions != null) {
             for (TermSession session : mTermSessions) {
@@ -1097,7 +1154,49 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
             bar.show();
         }
     }
-
+    
+    private void adjustViewFlipperHeight() {
+        if (mViewFlipper == null) {
+            return;
+        }
+        
+        int totalKeyboardHeight = 0;
+        if (mFloatingKeyboard != null && mFloatingKeyboard.isKeyboardVisible()) {
+            totalKeyboardHeight += mFloatingKeyboard.getKeyboardHeight();
+        }
+        if (mTextInputKeyboard != null && mTextInputKeyboard.isKeyboardVisible()) {
+            totalKeyboardHeight += mTextInputKeyboard.getKeyboardHeight();
+        }
+        
+        ViewGroup.LayoutParams params = mViewFlipper.getLayoutParams();
+        if (params instanceof FrameLayout.LayoutParams) {
+            ((FrameLayout.LayoutParams) params).bottomMargin = totalKeyboardHeight;
+            mViewFlipper.setLayoutParams(params);
+        }
+    }
+    
+    private void toggleToTextInputKeyboard() {
+        if (mFloatingKeyboard == null || mTextInputKeyboard == null) {
+            return;
+        }
+        
+        mUsingTextInputKeyboard = true;
+        mFloatingKeyboard.hideKeyboard();
+        mTextInputKeyboard.showKeyboard();
+        adjustViewFlipperHeight();
+    }
+    
+    private void toggleToFunctionKeyboard() {
+        if (mFloatingKeyboard == null || mTextInputKeyboard == null) {
+            return;
+        }
+        
+        mUsingTextInputKeyboard = false;
+        mTextInputKeyboard.hideKeyboard();
+        mFloatingKeyboard.showKeyboard();
+        adjustViewFlipperHeight();
+    }
+    
     private void doUIToggle(int x, int y, int width, int height) {
         switch (mActionBarMode) {
         case TermSettings.ACTION_BAR_MODE_NONE:
@@ -1105,12 +1204,18 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
                 openOptionsMenu();
                 return;
             } else {
-                doToggleSoftKeyboard();
+                if (mFloatingKeyboard != null) {
+                    mFloatingKeyboard.toggleKeyboard();
+                    adjustViewFlipperHeight();
+                }
+                return;
             }
-            break;
         case TermSettings.ACTION_BAR_MODE_ALWAYS_VISIBLE:
-            if (!mHaveFullHwKeyboard) {
-                doToggleSoftKeyboard();
+            if (mHaveFullHwKeyboard) {
+                if (mFloatingKeyboard != null) {
+                    mFloatingKeyboard.toggleKeyboard();
+                    adjustViewFlipperHeight();
+                }
             }
             break;
         case TermSettings.ACTION_BAR_MODE_HIDES:
@@ -1118,9 +1223,12 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
                 doToggleActionBar();
                 return;
             } else {
-                doToggleSoftKeyboard();
+                if (mFloatingKeyboard != null) {
+                    mFloatingKeyboard.toggleKeyboard();
+                    adjustViewFlipperHeight();
+                }
+                return;
             }
-            break;
         }
         getCurrentEmulatorView().requestFocus();
     }

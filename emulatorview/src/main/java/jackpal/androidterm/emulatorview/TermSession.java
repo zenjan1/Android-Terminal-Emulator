@@ -59,6 +59,10 @@ public class TermSession {
     public void setKeyListener(TermKeyListener l) {
         mKeyListener = l;
     }
+    
+    public TermKeyListener getKeyListener() {
+        return mKeyListener;
+    }
 
     private TermKeyListener mKeyListener;
 

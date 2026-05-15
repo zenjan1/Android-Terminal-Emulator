@@ -50,6 +50,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
+import android.widget.FrameLayout;
 import android.widget.Scroller;
 
 /**
@@ -623,7 +624,7 @@ public class EmulatorView extends View implements GestureDetector.OnGestureListe
 
     @Override
     public boolean onCheckIsTextEditor() {
-        return true;
+        return false;
     }
 
     @Override
