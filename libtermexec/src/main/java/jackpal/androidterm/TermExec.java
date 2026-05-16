@@ -2,7 +2,6 @@ package jackpal.androidterm;
 
 import android.annotation.TargetApi;
 import android.os.*;
-import android.support.annotation.NonNull;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -29,28 +28,28 @@ public class TermExec {
     private final List<String> command;
     private final Map<String, String> environment;
 
-    public TermExec(@NonNull String... command) {
+    public TermExec(String... command) {
         this(new ArrayList<>(Arrays.asList(command)));
     }
 
-    public TermExec(@NonNull List<String> command) {
+    public TermExec(List<String> command) {
         this.command = command;
         this.environment = new Hashtable<>(System.getenv());
     }
 
-    public @NonNull List<String> command() {
+    public List<String> command() {
         return command;
     }
 
-    public @NonNull Map<String, String> environment() {
+    public Map<String, String> environment() {
         return environment;
     }
 
-    public @NonNull TermExec command(@NonNull String... command) {
+    public TermExec command(String... command) {
         return command(new ArrayList<>(Arrays.asList(command)));
     }
 
-    public @NonNull TermExec command(List<String> command) {
+    public TermExec command(List<String> command) {
         command.clear();
         command.addAll(command);
         return this;
@@ -66,7 +65,7 @@ public class TermExec {
      *
      * @return the PID of the started process.
      */
-    public int start(@NonNull ParcelFileDescriptor ptmxFd) throws IOException {
+    public int start(ParcelFileDescriptor ptmxFd) throws IOException {
         if (Looper.getMainLooper() == Looper.myLooper())
             throw new IllegalStateException("This method must not be called from the main thread!");
 

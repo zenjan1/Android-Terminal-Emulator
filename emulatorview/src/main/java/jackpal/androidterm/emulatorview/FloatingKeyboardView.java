@@ -3,8 +3,7 @@ package jackpal.androidterm.emulatorview;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.inputmethodservice.Keyboard;
-import android.inputmethodservice.KeyboardView;
+
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Handler;
@@ -116,13 +115,13 @@ public class FloatingKeyboardView extends FrameLayout {
         row.addView(createSpace(context, 8));
         row.addView(createKey(context, "⇧", () -> toggleShift(), 1.0f, true, true));
         row.addView(createSpace(context, 8));
-        row.addView(createKey(context, "↑", () -> sendArrow(Keyboard.KEYCODE_UP), 1.0f));
+        row.addView(createKey(context, "↑", () -> sendArrowUp(), 1.0f));
         row.addView(createSpace(context, 8));
-        row.addView(createKey(context, "↓", () -> sendArrow(Keyboard.KEYCODE_DOWN), 1.0f));
+        row.addView(createKey(context, "↓", () -> sendArrowDown(), 1.0f));
         row.addView(createSpace(context, 8));
-        row.addView(createKey(context, "←", () -> sendArrow(Keyboard.KEYCODE_LEFT), 1.0f));
+        row.addView(createKey(context, "←", () -> sendArrowLeft(), 1.0f));
         row.addView(createSpace(context, 8));
-        row.addView(createKey(context, "→", () -> sendArrow(Keyboard.KEYCODE_RIGHT), 1.0f));
+        row.addView(createKey(context, "→", () -> sendArrowRight(), 1.0f));
     }
     
     private void setupRow2(Context context) {
@@ -249,20 +248,12 @@ public class FloatingKeyboardView extends FrameLayout {
     
     private void sendEscape() {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(27);
     }
     
     private void sendTab() {
         if (mSession == null) return;
-        try {
-            mSession.write('\t');
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write('\t');
     }
     
     private void toggleCtrl() {
@@ -277,9 +268,17 @@ public class FloatingKeyboardView extends FrameLayout {
         mAltActive = !mAltActive;
         if (mKeyListener != null) {
             if (mAltActive) {
-                mKeyListener.handleKeyCode(android.view.KeyEvent.KEYCODE_ALT_LEFT, null, false);
+                try {
+                    mKeyListener.handleKeyCode(android.view.KeyEvent.KEYCODE_ALT_LEFT, null, false);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             } else {
-                mKeyListener.handleKeyCode(android.view.KeyEvent.KEYCODE_ALT_LEFT, null, false);
+                try {
+                    mKeyListener.handleKeyCode(android.view.KeyEvent.KEYCODE_ALT_LEFT, null, false);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
         invalidate();
@@ -290,124 +289,97 @@ public class FloatingKeyboardView extends FrameLayout {
         invalidate();
     }
     
-    private void sendArrow(int keyCode) {
+    private void sendArrowUp() {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-            switch (keyCode) {
-                case Keyboard.KEYCODE_UP:
-                    mSession.write('[');
-                    mSession.write('A');
-                    break;
-                case Keyboard.KEYCODE_DOWN:
-                    mSession.write('[');
-                    mSession.write('B');
-                    break;
-                case Keyboard.KEYCODE_RIGHT:
-                    mSession.write('[');
-                    mSession.write('C');
-                    break;
-                case Keyboard.KEYCODE_LEFT:
-                    mSession.write('[');
-                    mSession.write('D');
-                    break;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('A');
+    }
+    
+    private void sendArrowDown() {
+        if (mSession == null) return;
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('B');
+    }
+    
+    private void sendArrowRight() {
+        if (mSession == null) return;
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('C');
+    }
+    
+    private void sendArrowLeft() {
+        if (mSession == null) return;
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('D');
     }
     
     private void sendHome() {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-            mSession.write('[');
-            mSession.write('H');
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('H');
     }
     
     private void sendEnd() {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-            mSession.write('[');
-            mSession.write('F');
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('F');
     }
     
     private void sendPageUp() {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-            mSession.write('[');
-            mSession.write('5');
-            mSession.write('~');
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('5');
+        mSession.write('~');
     }
     
     private void sendPageDown() {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-            mSession.write('[');
-            mSession.write('6');
-            mSession.write('~');
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('6');
+        mSession.write('~');
     }
     
     private void sendInsert() {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-            mSession.write('[');
-            mSession.write('2');
-            mSession.write('~');
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('2');
+        mSession.write('~');
     }
     
     private void sendDelete() {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-            mSession.write('[');
-            mSession.write('3');
-            mSession.write('~');
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(27);
+        mSession.write('[');
+        mSession.write('3');
+        mSession.write('~');
     }
     
     private void sendFunctionKey(int num) {
         if (mSession == null) return;
-        try {
-            mSession.write(27);
-            mSession.write('O');
-            char keyChar;
-            switch (num) {
-                case 1: keyChar = 'P'; break;
-                case 2: keyChar = 'Q'; break;
-                case 3: keyChar = 'R'; break;
-                case 4: keyChar = 'S'; break;
-                case 5: keyChar = 'T'; break;
-                case 6: keyChar = 'U'; break;
-                case 7: keyChar = 'V'; break;
-                case 8: keyChar = 'W'; break;
-                default: keyChar = 'P'; break;
-            }
-            mSession.write(keyChar);
-        } catch (IOException e) {
-            e.printStackTrace();
+        mSession.write(27);
+        mSession.write('O');
+        char keyChar;
+        switch (num) {
+            case 1: keyChar = 'P'; break;
+            case 2: keyChar = 'Q'; break;
+            case 3: keyChar = 'R'; break;
+            case 4: keyChar = 'S'; break;
+            case 5: keyChar = 'T'; break;
+            case 6: keyChar = 'U'; break;
+            case 7: keyChar = 'V'; break;
+            case 8: keyChar = 'W'; break;
+            default: keyChar = 'P'; break;
         }
+        mSession.write(keyChar);
     }
     
     public void toggleKeyboard() {

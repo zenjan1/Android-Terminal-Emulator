@@ -14,7 +14,6 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -250,11 +249,7 @@ public class TextInputKeyboardView extends FrameLayout {
     private void sendChar(char ch) {
         if (mSession == null) return;
         char toSend = mShiftActive ? Character.toUpperCase(ch) : ch;
-        try {
-            mSession.write(toSend);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(toSend);
         if (mShiftActive && !mCapsLock) {
             mShiftActive = false;
         }
@@ -262,20 +257,12 @@ public class TextInputKeyboardView extends FrameLayout {
     
     private void sendDelete() {
         if (mSession == null) return;
-        try {
-            mSession.write(127);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write(127);
     }
     
     private void sendEnter() {
         if (mSession == null) return;
-        try {
-            mSession.write('\n');
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        mSession.write('\n');
     }
     
     private void toggleShift() {

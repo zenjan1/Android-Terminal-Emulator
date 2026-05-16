@@ -17,7 +17,7 @@ import static jackpal.androidterm.emulatorview.compat.KeycodeConstants.*;
  * the current state of the alt, shift, fn, and control keys.
  *
  */
-class TermKeyListener {
+public class TermKeyListener {
     private final static String TAG = "TermKeyListener";
     private static final boolean LOG_MISC = false;
     private static final boolean LOG_KEYS = false;
