@@ -1,13 +1,15 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+}
 
 android {
-    compileSdkVersion 22
-    buildToolsVersion "22.0.1"
+    namespace 'jackpal.androidterm.sample.telnet'
+    compileSdk 34
 
     defaultConfig {
         applicationId "jackpal.androidterm.sample.telnet"
-        minSdkVersion 4
-        targetSdkVersion 22
+        minSdk 14
+        targetSdk 34
 
         ndk {
             moduleName "libjackpal-androidterm4"
@@ -18,11 +20,11 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.txt'
         }
     }
 }
 
 dependencies {
-    compile project(':emulatorview')
+    implementation project(':emulatorview')
 }
