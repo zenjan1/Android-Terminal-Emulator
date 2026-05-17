@@ -12,12 +12,21 @@
         android:layout_weight="1"
         />
 
-    <jackpal.androidterm.extrakeys.ExtraKeysView
-        android:id="@+id/extra_keys"
+    <LinearLayout
+        android:id="@+id/extra_keys_container"
+        style="?android:attr/buttonBarStyle"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:visibility="gone"
         android:background="#1a1a1a"
-        />
+        android:orientation="vertical">
+
+        <jackpal.androidterm.extrakeys.ExtraKeysView
+            android:id="@+id/extra_keys"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            />
+
+    </LinearLayout>
 
 </LinearLayout>

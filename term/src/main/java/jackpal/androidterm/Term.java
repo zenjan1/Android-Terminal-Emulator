@@ -98,6 +98,7 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
     private static final int VIEW_FLIPPER = R.id.view_flipper;
 
     private ExtraKeysView mExtraKeysView;
+    private View mExtraKeysContainer;
     private boolean mExtraKeysVisible = true;
 
     private SessionList mTermSessions;
@@ -384,6 +385,7 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
         mViewFlipper = (TermViewFlipper) findViewById(VIEW_FLIPPER);
 
         // Setup extra keys
+        mExtraKeysContainer = findViewById(R.id.extra_keys_container);
         mExtraKeysView = findViewById(R.id.extra_keys);
         setupExtraKeys();
 
@@ -1119,12 +1121,12 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
 
         // Show extra keys based on preference
         mExtraKeysVisible = prefs.getBoolean("show_extrakeys", true);
-        mExtraKeysView.setVisibility(mExtraKeysVisible ? View.VISIBLE : View.GONE);
+        mExtraKeysContainer.setVisibility(mExtraKeysVisible ? View.VISIBLE : View.GONE);
     }
 
     private void toggleExtraKeys() {
         mExtraKeysVisible = !mExtraKeysVisible;
-        mExtraKeysView.setVisibility(mExtraKeysVisible ? View.VISIBLE : View.GONE);
+        mExtraKeysContainer.setVisibility(mExtraKeysVisible ? View.VISIBLE : View.GONE);
     }
 
     private void doToggleWakeLock() {

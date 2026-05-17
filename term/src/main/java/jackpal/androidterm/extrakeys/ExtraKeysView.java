@@ -1,18 +1,17 @@
 package jackpal.androidterm.extrakeys;
 
 import android.content.Context;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.RectF;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.GridLayout;
+import android.widget.Button;
+import android.widget.LinearLayout;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -23,10 +22,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Simplified extra keys view based on GridLayout.
- * Uses custom-drawn KeyButton views to avoid Android theming issues.
+ * Extra keys view using LinearLayout with styled buttons, following Termux approach.
  */
-public class ExtraKeysView extends GridLayout {
+public class ExtraKeysView extends LinearLayout {
 
     public interface OnKeyListener {
         void onExtraKeyClick(String keyName);
@@ -44,14 +42,10 @@ public class ExtraKeysView extends GridLayout {
     private Handler mHandler;
     private int mLongPressCount;
 
-    private static final int BTN_BG = Color.rgb(48, 48, 48);
-    private static final int BTN_PRESSED = Color.rgb(96, 96, 96);
-    private static final int BTN_SPECIAL_ACTIVE = Color.rgb(96, 96, 96);
-    private static final int BTN_TEXT = Color.rgb(224, 224, 224);
-    private static final int BTN_TEXT_ACTIVE = Color.WHITE;
-
     public ExtraKeysView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        setOrientation(VERTICAL);
+        setWeightSum(1f);
         mHandler = new Handler(Looper.getMainLooper());
         for (String k : SPECIAL_KEYS) mSpecialButtonStates.put(k, false);
     }
@@ -66,17 +60,28 @@ public class ExtraKeysView extends GridLayout {
         if (info == null) return;
 
         ExtraKeyButton[][] buttons = info.getMatrix();
-        setRowCount(buttons.length);
-        int maxCol = ExtraKeysInfo.maxColumns(buttons);
-        setColumnCount(maxCol);
 
         for (int row = 0; row < buttons.length; row++) {
+            LinearLayout rowLayout = new LinearLayout(getContext());
+            rowLayout.setOrientation(HORIZONTAL);
+            rowLayout.setWeightSum(1f);
+            rowLayout.setLayoutParams(new LayoutParams(
+                    LayoutParams.MATCH_PARENT, 0, 1f / buttons.length));
+
             for (int col = 0; col < buttons[row].length; col++) {
                 final ExtraKeyButton btnInfo = buttons[row][col];
-                final KeyButton btn = new KeyButton(getContext(), btnInfo.getDisplay());
+
+                // Create button with buttonBarButtonStyle like Termux does
+                final Button btn = new Button(getContext(), null, android.R.attr.buttonBarButtonStyle);
+
+                btn.setText(btnInfo.getDisplay());
+                btn.setTextColor(Color.WHITE);
+                btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+                btn.setAllCaps(false);
+                btn.setPadding(0, 0, 0, 0);
 
                 if (btnInfo.isSpecial()) {
-                    btn.setActive(mSpecialButtonStates.getOrDefault(btnInfo.getKey(), false));
+                    btn.setTextColor(Color.LTGRAY);
                 }
 
                 final ExtraKeyButton finalBtnInfo = btnInfo;
@@ -86,7 +91,7 @@ public class ExtraKeysView extends GridLayout {
                         if (finalBtnInfo.isSpecial()) {
                             boolean newState = !mSpecialButtonStates.getOrDefault(finalBtnInfo.getKey(), false);
                             mSpecialButtonStates.put(finalBtnInfo.getKey(), newState);
-                            btn.setActive(newState);
+                            btn.setTextColor(Color.WHITE);
                         } else if (finalBtnInfo.isMacro()) {
                             fireText(finalBtnInfo.getMacro());
                         } else {
@@ -100,7 +105,7 @@ public class ExtraKeysView extends GridLayout {
                     public boolean onTouch(View v, MotionEvent event) {
                         switch (event.getAction()) {
                             case MotionEvent.ACTION_DOWN:
-                                btn.setPressed(true);
+                                btn.setTextColor(Color.WHITE);
                                 if (REPETITIVE_KEYS.contains(finalBtnInfo.getKey()) && !finalBtnInfo.isSpecial()) {
                                     mLongPressCount = 0;
                                     mScheduler = Executors.newSingleThreadScheduledExecutor();
@@ -115,7 +120,8 @@ public class ExtraKeysView extends GridLayout {
                                 return true;
                             case MotionEvent.ACTION_UP:
                             case MotionEvent.ACTION_CANCEL:
-                                btn.setPressed(false);
+                                boolean active = mSpecialButtonStates.getOrDefault(finalBtnInfo.getKey(), false);
+                                btn.setTextColor(active ? Color.WHITE : Color.LTGRAY);
                                 if (mScheduler != null) {
                                     mScheduler.shutdownNow();
                                     mScheduler = null;
@@ -127,15 +133,12 @@ public class ExtraKeysView extends GridLayout {
                     }
                 });
 
-                GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-                params.width = 0;
-                params.height = ViewGroup.LayoutParams.MATCH_PARENT;
-                params.columnSpec = GridLayout.spec(col, GridLayout.FILL, 1f);
-                params.rowSpec = GridLayout.spec(row, GridLayout.FILL, 1f);
-                params.setMargins(2, 2, 2, 2);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
                 btn.setLayoutParams(params);
-                addView(btn);
+                rowLayout.addView(btn);
             }
+
+            addView(rowLayout);
         }
     }
 
@@ -160,73 +163,5 @@ public class ExtraKeysView extends GridLayout {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         if (mScheduler != null) mScheduler.shutdownNow();
-    }
-
-    /**
-     * A button that draws itself, completely bypassing Android theming.
-     */
-    static class KeyButton extends View {
-        private final Paint bgPaint;
-        private final Paint textPaint;
-        private final Rect textBounds;
-        private final String text;
-        private boolean isPressed;
-        private boolean isActive;
-
-        public KeyButton(Context context, String text) {
-            super(context);
-            this.text = text;
-            this.isPressed = false;
-            this.isActive = false;
-
-            bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            bgPaint.setStyle(Paint.Style.FILL);
-
-            textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            textPaint.setStyle(Paint.Style.FILL);
-            textPaint.setTextAlign(Paint.Align.CENTER);
-            textPaint.setTextSize(26f);
-            textPaint.setFakeBoldText(true);
-
-            textBounds = new Rect();
-            textPaint.getTextBounds(text, 0, text.length(), textBounds);
-
-            setWillNotDraw(false);
-            setClickable(true);
-        }
-
-        public void setPressed(boolean pressed) {
-            this.isPressed = pressed;
-            invalidate();
-        }
-
-        public void setActive(boolean active) {
-            this.isActive = active;
-            invalidate();
-        }
-
-        @Override
-        protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            int width = getWidth();
-            int height = getHeight();
-
-            // Draw background
-            if (isPressed) {
-                bgPaint.setColor(BTN_PRESSED);
-            } else if (isActive) {
-                bgPaint.setColor(BTN_SPECIAL_ACTIVE);
-            } else {
-                bgPaint.setColor(BTN_BG);
-            }
-            RectF rect = new RectF(0, 0, width, height);
-            canvas.drawRoundRect(rect, 8f, 8f, bgPaint);
-
-            // Draw text
-            textPaint.setColor(isPressed ? BTN_TEXT_ACTIVE : BTN_TEXT);
-            float cx = width / 2f;
-            float cy = height / 2f - (textPaint.descent() + textPaint.ascent()) / 2f;
-            canvas.drawText(text, cx, cy, textPaint);
-        }
     }
 }
