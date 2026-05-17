@@ -1,6 +1,7 @@
 //From the desk of Frank P. Westlake; public domain.
 package jackpal.androidterm.shortcuts;
 
+import android.app.        AlertDialog;
 import android.content.    Context;
 import android.content.    DialogInterface;
 import android.content.    Intent;

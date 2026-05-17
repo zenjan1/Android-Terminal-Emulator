@@ -17,6 +17,8 @@
 package jackpal.androidterm;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
@@ -149,7 +151,7 @@ public class TermService extends Service implements TermSession.FinishCallback {
                     switchIntent, PendingIntent.FLAG_IMMUTABLE);
 
             final PackageManager pm = getPackageManager();
-            final String[] pkgs = pm.getPackagesForUid(getCallingUid());
+            final String[] pkgs = pm.getPackagesForUid(android.os.Binder.getCallingUid());
             if (pkgs == null || pkgs.length == 0)
                 return null;
 

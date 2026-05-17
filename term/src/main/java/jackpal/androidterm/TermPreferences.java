@@ -16,9 +16,8 @@
 
 package jackpal.androidterm;
 
-
-
-
+import android.app.ActionBar;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
@@ -33,22 +32,19 @@ public class TermPreferences extends PreferenceActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Load the preferences from an XML resource
         addPreferencesFromResource(R.xml.preferences);
 
-        // Remove the action bar pref on older platforms without an action bar
-        if (AndroidCompat.SDK < 11) {
+        if (Build.VERSION.SDK_INT < 11) {
             Preference actionBarPref = findPreference(ACTIONBAR_KEY);
-             PreferenceCategory screenCategory =
+            PreferenceCategory screenCategory =
                     (PreferenceCategory) findPreference(CATEGORY_SCREEN_KEY);
-             if ((actionBarPref != null) && (screenCategory != null)) {
-                 screenCategory.removePreference(actionBarPref);
-             }
+            if ((actionBarPref != null) && (screenCategory != null)) {
+                screenCategory.removePreference(actionBarPref);
+            }
         }
 
-        // Display up indicator on action bar home button
-        if (AndroidCompat.V11ToV20) {
-            ActionBar bar = getActionBar(this);
+        if (Build.VERSION.SDK_INT >= 11) {
+            ActionBar bar = getActionBar();
             if (bar != null) {
                 bar.setDisplayOptions(ActionBar.DISPLAY_HOME_AS_UP, ActionBar.DISPLAY_HOME_AS_UP);
             }
@@ -58,8 +54,7 @@ public class TermPreferences extends PreferenceActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-        case ActionBar.ID_HOME:
-            // Action bar home button selected
+        case android.R.id.home:
             finish();
             return true;
         default:

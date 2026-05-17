@@ -16,6 +16,7 @@
 
 package jackpal.androidterm.emulatorview;
 
+import jackpal.androidterm.R;
 import jackpal.androidterm.emulatorview.compat.AndroidCompat;
 
 import android.content.res.Resources;

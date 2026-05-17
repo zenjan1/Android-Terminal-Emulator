@@ -16,11 +16,13 @@
 
 package jackpal.androidterm;
 
+import android.app.ActionBar;
 import android.app.ListActivity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.AttributeSet;
@@ -93,8 +95,8 @@ public class WindowList extends ListActivity {
         setResult(RESULT_CANCELED);
 
         // Display up indicator on action bar home button
-        if (AndroidCompat.SDK >= 11) {
-            ActionBar bar = getActionBar(this);
+        if (Build.VERSION.SDK_INT >= 11) {
+            ActionBar bar = getActionBar();
             if (bar != null) {
                 bar.setDisplayOptions(ActionBar.DISPLAY_HOME_AS_UP, ActionBar.DISPLAY_HOME_AS_UP);
             }
@@ -152,7 +154,7 @@ public class WindowList extends ListActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-        case ActionBar.ID_HOME:
+        case android.R.id.home:
             // Action bar home button selected
             finish();
             return true;

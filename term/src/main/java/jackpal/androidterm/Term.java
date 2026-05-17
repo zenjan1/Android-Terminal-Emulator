@@ -27,6 +27,9 @@ import jackpal.androidterm.emulatorview.UpdateCallback;
 import jackpal.androidterm.emulatorview.compat.ClipboardManagerCompat;
 import jackpal.androidterm.emulatorview.compat.ClipboardManagerCompatFactory;
 import jackpal.androidterm.emulatorview.compat.KeycodeConstants;
+import jackpal.androidterm.extrakeys.ExtraKeysView;
+import jackpal.androidterm.extrakeys.ExtraKeysInfo;
+import jackpal.androidterm.extrakeys.ExtraKeysConstants;
 import jackpal.androidterm.util.SessionList;
 import jackpal.androidterm.util.TermSettings;
 
@@ -36,6 +39,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -54,9 +58,11 @@ import android.content.res.Resources;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -90,6 +96,9 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
      * The name of the ViewFlipper in the resources.
      */
     private static final int VIEW_FLIPPER = R.id.view_flipper;
+
+    private ExtraKeysView mExtraKeysView;
+    private boolean mExtraKeysVisible = false;
 
     private SessionList mTermSessions;
 
@@ -374,6 +383,10 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
         setContentView(R.layout.term_activity);
         mViewFlipper = (TermViewFlipper) findViewById(VIEW_FLIPPER);
 
+        // Setup extra keys
+        mExtraKeysView = findViewById(R.id.extra_keys);
+        setupExtraKeys();
+
         PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TermDebug.LOG_TAG);
         WifiManager wm = (WifiManager)getSystemService(Context.WIFI_SERVICE);
@@ -383,7 +396,7 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
         }
         mWifiLock = wm.createWifiLock(wifiLockMode, TermDebug.LOG_TAG);
 
-        ActionBar actionBar = getActionBar(this);
+        ActionBar actionBar = getActionBar();
         if (actionBar != null) {
             mActionBar = actionBar;
             actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
@@ -669,8 +682,8 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
-        MenuItem.setShowAsAction(menu.findItem(R.id.menu_new_window), MenuItem.SHOW_AS_ACTION_ALWAYS);
-        MenuItem.setShowAsAction(menu.findItem(R.id.menu_close_window), MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        menu.findItem(R.id.menu_new_window).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        menu.findItem(R.id.menu_close_window).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         return true;
     }
 
@@ -1068,13 +1081,55 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
 
     }
 
+    private void setupExtraKeys() {
+        String defaultKeys = "[[\"ESC\",\"TAB\",\"CTRL\",\"ALT\",\"HOME\",\"UP\",\"END\"],[\"BKSP\",\"DEL\",\"LEFT\",\"DOWN\",\"RIGHT\",\"PGUP\",\"PGDN\"]]";
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String extraKeysJson = prefs.getString("extra_keys", defaultKeys);
+
+        try {
+            ExtraKeysInfo info = new ExtraKeysInfo(extraKeysJson);
+            mExtraKeysView.reload(info);
+        } catch (Exception e) {
+            // Use default
+            try {
+                mExtraKeysView.reload(new ExtraKeysInfo(defaultKeys));
+            } catch (Exception ignored) {}
+        }
+
+        mExtraKeysView.setOnKeyListener(new ExtraKeysView.OnKeyListener() {
+            @Override
+            public void onExtraKeyClick(String keyName) {
+                EmulatorView view = getCurrentEmulatorView();
+                if (view == null) return;
+
+                Integer keyCode = ExtraKeysConstants.PRIMARY_KEY_CODES_FOR_STRINGS.get(keyName);
+                if (keyCode != null) {
+                    long time = SystemClock.uptimeMillis();
+                    int metaState = 0;
+                    if (mExtraKeysView.isCtrlDown()) metaState |= KeyEvent.META_CTRL_ON;
+                    if (mExtraKeysView.isAltDown()) metaState |= KeyEvent.META_ALT_ON;
+                    if (mExtraKeysView.isShiftDown()) metaState |= KeyEvent.META_SHIFT_ON;
+                    KeyEvent downEvent = new KeyEvent(time, time, KeyEvent.ACTION_DOWN, keyCode, 0, metaState);
+                    view.onKeyDown(keyCode, downEvent);
+                    KeyEvent upEvent = new KeyEvent(time, time, KeyEvent.ACTION_UP, keyCode, 0, metaState);
+                    view.onKeyUp(keyCode, upEvent);
+                }
+            }
+        });
+    }
+
+    private void toggleExtraKeys() {
+        mExtraKeysVisible = !mExtraKeysVisible;
+        mExtraKeysView.setVisibility(mExtraKeysVisible ? View.VISIBLE : View.GONE);
+    }
+
     private void doToggleWakeLock() {
         if (mWakeLock.isHeld()) {
             mWakeLock.release();
         } else {
             mWakeLock.acquire();
         }
-        invalidateOptionsMenu(this);
+        invalidateOptionsMenu();
     }
 
     private void doToggleWifiLock() {
@@ -1083,7 +1138,7 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
         } else {
             mWifiLock.acquire();
         }
-        invalidateOptionsMenu(this);
+        invalidateOptionsMenu();
     }
 
     private void doToggleActionBar() {
