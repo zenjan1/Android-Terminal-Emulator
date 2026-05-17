@@ -98,7 +98,7 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
     private static final int VIEW_FLIPPER = R.id.view_flipper;
 
     private ExtraKeysView mExtraKeysView;
-    private boolean mExtraKeysVisible = false;
+    private boolean mExtraKeysVisible = true;
 
     private SessionList mTermSessions;
 
@@ -1116,6 +1116,10 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
                 }
             }
         });
+
+        // Show extra keys by default
+        mExtraKeysVisible = true;
+        mExtraKeysView.setVisibility(View.VISIBLE);
     }
 
     private void toggleExtraKeys() {
