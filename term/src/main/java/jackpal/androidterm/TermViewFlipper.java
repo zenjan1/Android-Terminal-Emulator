@@ -226,37 +226,22 @@ public class TermViewFlipper extends ViewFlipper implements Iterable<View> {
         Rect visible = mVisibleRect;
         Rect window = mWindowRect;
 
-        /* Get rectangle representing visible area of this view, as seen by
-           the activity (takes other views in the layout into account, but
-           not space used by the IME) */
-        getGlobalVisibleRect(visible);
+        /* Use our actual measured size — the LinearLayout with layout_weight=1
+           already accounts for the extra_keys_container taking space */
+        visible.set(0, 0, getMeasuredWidth(), getMeasuredHeight());
 
         /* Get rectangle representing visible area of this window (takes
-           IME into account, but not other views in the layout) */
+           IME into account) */
         getWindowVisibleDisplayFrame(window);
-        /* Work around bug in getWindowVisibleDisplayFrame on API < 10, and
-           avoid a distracting height change as status bar hides otherwise */
+        /* Work around bug in getWindowVisibleDisplayFrame on API < 10 */
         if (!mStatusBarVisible) {
             window.top = 0;
         }
 
-        // Clip visible rectangle's top to the visible portion of the window
-        if (visible.width() == 0 && visible.height() == 0) {
-            visible.left = window.left;
-            visible.top = window.top;
-        } else {
-            if (visible.left < window.left) {
-                visible.left = window.left;
-            }
-            if (visible.top < window.top) {
-                visible.top = window.top;
-            }
+        // Use actual measured height, but limit bottom to window bottom if IME shrinks it
+        if (visible.bottom > window.bottom) {
+            visible.bottom = window.bottom;
         }
-        // Always set the bottom of the rectangle to the window bottom
-        /* XXX This breaks with a split action bar, but if we don't do this,
-           it's possible that the view won't resize correctly on IME hide */
-        visible.right = window.right;
-        visible.bottom = window.bottom;
     }
 
     private void adjustChildSize() {

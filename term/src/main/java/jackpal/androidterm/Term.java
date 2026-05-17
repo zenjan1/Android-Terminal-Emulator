@@ -177,6 +177,9 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
         mSettings.readPrefs(sharedPreferences);
+        if ("extra_keys".equals(s) || "show_extrakeys".equals(s)) {
+            setupExtraKeys();
+        }
     }
 
     private class WindowListActionBarAdapter extends WindowListAdapter implements UpdateCallback {
@@ -434,6 +437,29 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
         }
 
         return path.substring(0, path.length()-1);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean showKeys = prefs.getBoolean("show_extrakeys", true);
+        if (mExtraKeysContainer != null) {
+            mExtraKeysContainer.setVisibility(showKeys ? View.VISIBLE : View.GONE);
+        }
+        String extraKeysJson = prefs.getString("extra_keys", null);
+        if (extraKeysJson != null && mExtraKeysView != null) {
+            try {
+                ExtraKeysInfo info = new ExtraKeysInfo(extraKeysJson);
+                mExtraKeysView.reload(info);
+            } catch (Exception e) {
+                // Use default
+                try {
+                    String defaultKeys = "[[\"ESC\",\"TAB\",\"CTRL\",\"ALT\",\"HOME\",\"UP\",\"END\"],[\"BKSP\",\"DEL\",\"LEFT\",\"DOWN\",\"RIGHT\",\"PGUP\",\"PGDN\"]]";
+                    mExtraKeysView.reload(new ExtraKeysInfo(defaultKeys));
+                } catch (Exception ignored) {}
+            }
+        }
     }
 
     @Override

@@ -5,14 +5,20 @@
     android:versionCode="71"
     android:installLocation="auto">
 
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
+
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <supports-screens android:smallScreens="true" android:normalScreens="true" android:largeScreens="true" android:xlargeScreens="true" android:anyDensity="true" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Custom permissions commented out to avoid conflict with MIUI system -->
+    <!--
     <permission android:name="jackpal.androidterm.permission.RUN_SCRIPT"
                 android:label="@string/perm_run_script"
                 android:description="@string/permdesc_run_script"
@@ -28,6 +34,7 @@
                 android:description="@string/permdesc_prepend_to_path"
                 android:permissionGroup="android.permission-group.SYSTEM_TOOLS"
                 android:protectionLevel="dangerous" />
+    -->
 
     <application
         android:icon="@drawable/ic_launcher"
@@ -40,8 +47,8 @@
             android:name="Term"
             android:label="@string/application_terminal"
             android:launchMode="singleTask"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
-            android:windowSoftInputMode="adjustResize|stateAlwaysVisible"
+            android:configChanges="orientation|screenSize"
+            android:windowSoftInputMode="adjustResize|stateHidden"
             android:resizeableActivity="true"
             android:exported="true">
             <intent-filter>
@@ -89,7 +96,6 @@
         <activity
             android:name="RunScript"
             android:excludeFromRecents="true"
-            android:permission="jackpal.androidterm.permission.RUN_SCRIPT"
             android:exported="true">
             <intent-filter>
                 <action android:name="jackpal.androidterm.RUN_SCRIPT" />

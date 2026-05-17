@@ -39,8 +39,6 @@ import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.Log;
 
-import androidx.core.app.NotificationCompat;
-
 import jackpal.androidterm.emulatorview.TermSession;
 import jackpal.androidterm.libtermexec.v1.ITerminal;
 import jackpal.androidterm.libtermexec.v1.*;
@@ -94,7 +92,13 @@ public class TermService extends Service implements TermSession.FinishCallback {
 
         mTermSessions = new SessionList();
 
-        Notification notification = new NotificationCompat.Builder(this, "term_service")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    "term_service", "Terminal Service", NotificationManager.IMPORTANCE_LOW);
+            getSystemService(NotificationManager.class).createNotificationChannel(channel);
+        }
+
+        Notification notification = new Notification.Builder(this, "term_service")
                 .setContentTitle(getText(R.string.application_terminal))
                 .setContentText(getText(R.string.service_notify_text))
                 .setSmallIcon(R.drawable.ic_stat_service_notification_icon)
@@ -104,12 +108,6 @@ public class TermService extends Service implements TermSession.FinishCallback {
                         new Intent(this, Term.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                         PendingIntent.FLAG_IMMUTABLE))
                 .build();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    "term_service", "Terminal Service", NotificationManager.IMPORTANCE_LOW);
-            getSystemService(NotificationManager.class).createNotificationChannel(channel);
-        }
 
         startForeground(RUNNING_NOTIFICATION, notification);
 

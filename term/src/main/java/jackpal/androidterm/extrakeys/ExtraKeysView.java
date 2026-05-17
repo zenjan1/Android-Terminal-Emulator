@@ -1,18 +1,18 @@
 package jackpal.androidterm.extrakeys;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -22,9 +22,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Extra keys view using LinearLayout with styled buttons, following Termux approach.
+ * Extra keys view - single custom view that draws all buttons with Canvas.
+ * This avoids all Button/TextView theming issues.
  */
-public class ExtraKeysView extends LinearLayout {
+public class ExtraKeysView extends View {
 
     public interface OnKeyListener {
         void onExtraKeyClick(String keyName);
@@ -42,12 +43,45 @@ public class ExtraKeysView extends LinearLayout {
     private Handler mHandler;
     private int mLongPressCount;
 
+    private Paint bgPaint;
+    private Paint textPaint;
+    private RectF bgRect;
+
+    private ArrayList<ButtonInfo> mButtons = new ArrayList<>();
+
+    private static class ButtonInfo {
+        final String key;
+        final String display;
+        final boolean isSpecial;
+        final boolean isMacro;
+        final String macro;
+        boolean pressed;
+        boolean active;
+        float x, y, w, h;
+
+        ButtonInfo(String key, String display, boolean isSpecial, boolean isMacro, String macro) {
+            this.key = key;
+            this.display = display;
+            this.isSpecial = isSpecial;
+            this.isMacro = isMacro;
+            this.macro = macro;
+            this.pressed = false;
+            this.active = false;
+        }
+    }
+
     public ExtraKeysView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setOrientation(VERTICAL);
-        setWeightSum(1f);
+        setLayerType(LAYER_TYPE_SOFTWARE, null);
         mHandler = new Handler(Looper.getMainLooper());
         for (String k : SPECIAL_KEYS) mSpecialButtonStates.put(k, false);
+
+        bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        textPaint.setTextSize(36f);
+        textPaint.setFakeBoldText(true);
+        bgRect = new RectF();
     }
 
     public void setOnKeyListener(OnKeyListener listener) {
@@ -56,112 +90,149 @@ public class ExtraKeysView extends LinearLayout {
 
     public void reload(ExtraKeysInfo info) {
         mExtraKeysInfo = info;
-        removeAllViews();
-        if (info == null) return;
+        mButtons.clear();
+        if (info == null) {
+            invalidate();
+            return;
+        }
 
         ExtraKeyButton[][] buttons = info.getMatrix();
+        for (ExtraKeyButton[] row : buttons) {
+            for (ExtraKeyButton btn : row) {
+                mButtons.add(new ButtonInfo(
+                    btn.getKey(),
+                    btn.getDisplay(),
+                    btn.isSpecial(),
+                    btn.isMacro(),
+                    btn.getMacro()
+                ));
+            }
+        }
+        invalidate();
+    }
 
-        for (int row = 0; row < buttons.length; row++) {
-            LinearLayout rowLayout = new LinearLayout(getContext());
-            rowLayout.setOrientation(HORIZONTAL);
-            rowLayout.setWeightSum(1f);
-            rowLayout.setLayoutParams(new LayoutParams(
-                    LayoutParams.MATCH_PARENT, 0, 1f / buttons.length));
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        int width = getWidth();
+        int height = getHeight();
 
-            for (int col = 0; col < buttons[row].length; col++) {
-                final ExtraKeyButton btnInfo = buttons[row][col];
+        if (mButtons.isEmpty() || width == 0 || height == 0) return;
 
-                // Create button with buttonBarButtonStyle like Termux does
-                final Button btn = new Button(getContext(), null, android.R.attr.buttonBarButtonStyle);
+        // Calculate grid
+        int rows = mExtraKeysInfo != null ? mExtraKeysInfo.getMatrix().length : 1;
+        int rowH = height / rows;
 
-                btn.setText(btnInfo.getDisplay());
-                btn.setTextColor(Color.WHITE);
-                btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-                btn.setAllCaps(false);
-                btn.setPadding(0, 0, 0, 0);
+        int idx = 0;
+        ExtraKeyButton[][] matrix = mExtraKeysInfo != null ? mExtraKeysInfo.getMatrix() : null;
+        if (matrix == null) return;
 
-                if (btnInfo.isSpecial()) {
-                    btn.setTextColor(Color.LTGRAY);
+        for (int row = 0; row < rows; row++) {
+            int cols = matrix[row].length;
+            int colW = width / cols;
+            for (int col = 0; col < cols; col++) {
+                if (idx >= mButtons.size()) break;
+                ButtonInfo bi = mButtons.get(idx);
+                bi.x = col * colW;
+                bi.y = row * rowH;
+                bi.w = colW;
+                bi.h = rowH;
+
+                // Draw button background only when pressed or active
+                if (bi.pressed || bi.active) {
+                    bgPaint.setColor(0xFF404040);
+                    bgRect.set(bi.x + 2, bi.y + 2, bi.x + bi.w - 2, bi.y + bi.h - 2);
+                    canvas.drawRoundRect(bgRect, 6f, 6f, bgPaint);
                 }
 
-                final ExtraKeyButton finalBtnInfo = btnInfo;
-                btn.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        if (finalBtnInfo.isSpecial()) {
-                            boolean newState = !mSpecialButtonStates.getOrDefault(finalBtnInfo.getKey(), false);
-                            mSpecialButtonStates.put(finalBtnInfo.getKey(), newState);
-                            btn.setTextColor(Color.WHITE);
-                        } else if (finalBtnInfo.isMacro()) {
-                            fireText(finalBtnInfo.getMacro());
-                        } else {
-                            fireKey(finalBtnInfo.getKey());
-                        }
-                    }
-                });
+                // Draw button text
+                textPaint.setColor(0xFFFFFFFF);
+                float cy = bi.y + bi.h / 2f - (textPaint.descent() + textPaint.ascent()) / 2f;
+                canvas.drawText(bi.display, bi.x + bi.w / 2f, cy, textPaint);
 
-                btn.setOnTouchListener(new View.OnTouchListener() {
-                    @Override
-                    public boolean onTouch(View v, MotionEvent event) {
-                        switch (event.getAction()) {
-                            case MotionEvent.ACTION_DOWN:
-                                btn.setTextColor(Color.WHITE);
-                                if (REPETITIVE_KEYS.contains(finalBtnInfo.getKey()) && !finalBtnInfo.isSpecial()) {
-                                    mLongPressCount = 0;
-                                    mScheduler = Executors.newSingleThreadScheduledExecutor();
-                                    mScheduler.scheduleWithFixedDelay(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            mLongPressCount++;
-                                            fireKey(finalBtnInfo.getKey());
-                                        }
-                                    }, 400, 80, TimeUnit.MILLISECONDS);
-                                }
-                                return true;
-                            case MotionEvent.ACTION_UP:
-                            case MotionEvent.ACTION_CANCEL:
-                                boolean active = mSpecialButtonStates.getOrDefault(finalBtnInfo.getKey(), false);
-                                btn.setTextColor(active ? Color.WHITE : Color.LTGRAY);
-                                if (mScheduler != null) {
-                                    mScheduler.shutdownNow();
-                                    mScheduler = null;
-                                }
-                                mLongPressCount = 0;
-                                return true;
-                        }
-                        return false;
-                    }
-                });
-
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-                btn.setLayoutParams(params);
-                rowLayout.addView(btn);
+                idx++;
             }
-
-            addView(rowLayout);
         }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        float x = event.getX();
+        float y = event.getY();
+
+        ButtonInfo hit = null;
+        for (ButtonInfo bi : mButtons) {
+            if (x >= bi.x && x <= bi.x + bi.w && y >= bi.y && y <= bi.y + bi.h) {
+                hit = bi;
+                break;
+            }
+        }
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                if (hit != null) {
+                    hit.pressed = true;
+                    invalidate();
+                    if (REPETITIVE_KEYS.contains(hit.key) && !hit.isSpecial) {
+                        mLongPressCount = 0;
+                        mScheduler = Executors.newSingleThreadScheduledExecutor();
+                        final String repetitiveKey = hit.key;
+                        mScheduler.scheduleWithFixedDelay(new Runnable() {
+                            @Override
+                            public void run() {
+                                mLongPressCount++;
+                                fireKey(repetitiveKey);
+                            }
+                        }, 400, 80, TimeUnit.MILLISECONDS);
+                    }
+                }
+                return true;
+            case MotionEvent.ACTION_UP:
+                if (hit != null) {
+                    hit.pressed = false;
+                    invalidate();
+                    if (mScheduler != null) {
+                        mScheduler.shutdownNow();
+                        mScheduler = null;
+                    }
+                    mLongPressCount = 0;
+                    if (hit.isSpecial) {
+                        boolean newState = !mSpecialButtonStates.getOrDefault(hit.key, false);
+                        mSpecialButtonStates.put(hit.key, newState);
+                        hit.active = newState;
+                        invalidate();
+                    } else if (hit.isMacro) {
+                        fireText(hit.macro);
+                    } else {
+                        fireKey(hit.key);
+                    }
+                }
+                return true;
+            case MotionEvent.ACTION_CANCEL:
+                for (ButtonInfo bi : mButtons) {
+                    bi.pressed = false;
+                }
+                if (mScheduler != null) {
+                    mScheduler.shutdownNow();
+                    mScheduler = null;
+                }
+                mLongPressCount = 0;
+                invalidate();
+                return true;
+        }
+        return false;
     }
 
     private void fireKey(String keyName) {
-        if (mListener != null) {
-            mListener.onExtraKeyClick(keyName);
-        }
+        if (mListener != null) mListener.onExtraKeyClick(keyName);
     }
 
     private void fireText(String text) {
-        if (mListener != null) {
-            mListener.onExtraKeyClick(text);
-        }
+        if (mListener != null) mListener.onExtraKeyClick(text);
     }
 
     public boolean isCtrlDown() { return mSpecialButtonStates.getOrDefault("CTRL", false); }
     public boolean isAltDown() { return mSpecialButtonStates.getOrDefault("ALT", false); }
     public boolean isShiftDown() { return mSpecialButtonStates.getOrDefault("SHIFT", false); }
     public boolean isFnDown() { return mSpecialButtonStates.getOrDefault("FN", false); }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        super.onDetachedFromWindow();
-        if (mScheduler != null) mScheduler.shutdownNow();
-    }
 }
