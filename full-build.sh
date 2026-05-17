@@ -141,27 +141,38 @@ javac -d "$B/classes" \
     $JAVA_FILES 2>&1 | tail -3
 echo "  Java compiled"
 
-echo "=== 5. Create jar from classes ==="
+echo "=== 5. Merge AAR jars with project classes ==="
+# Copy all AAR classes.jar files into our classes dir
+for jar in $(find "$B/libs" -name 'classes.jar'); do
+    cd "$(dirname "$jar")"
+    jar xf classes.jar -d "$B/classes" 2>/dev/null || true
+    cd - > /dev/null
+done
+
 cd "$B/classes"
 jar cf ../classes.jar .
 cd - > /dev/null
 echo "  classes.jar: $(ls -lh "$B/classes.jar" | awk '{print $5}')"
 
 echo "=== 6. Convert to DEX ==="
-mkdir -p "$B/dex-out"
-dx --dex --output="$B/dex-out/classes.dex" "$B/classes.jar" 2>&1 | tail -3
-echo "  DEX: $(ls $B/dex-out/*.dex 2>/dev/null | wc -l) files"
+dx --dex --output="$B/classes.dex" "$B/classes.jar" 2>&1 | tail -3
+echo "  DEX: $(ls -lh $B/classes.dex 2>/dev/null | awk '{print $5}')"
 
 echo "=== 7. Assemble APK ==="
 cp "$B/resources.apk" "$B/app-unsigned.apk"
 cd "$B"
-if [ -f dex-out/classes.dex ]; then
-    zip app-unsigned.apk dex-out/classes.dex > /dev/null
-elif [ -f classes.dex ]; then
+if [ -f classes.dex ]; then
     zip app-unsigned.apk classes.dex > /dev/null
 fi
+# Bundle libc++_shared.so for native libs compiled with clang++
+NDK_LIBCXX="$HOME/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so"
+if [ -d lib/arm64-v8a ] && [ -f "$NDK_LIBCXX" ]; then
+    cp "$NDK_LIBCXX" lib/arm64-v8a/libc++_shared.so
+    zip app-unsigned.apk lib/arm64-v8a/libc++_shared.so > /dev/null
+    echo "  libc++_shared.so bundled"
+fi
 cd - > /dev/null
-echo "  classes.dex added"
+echo "  classes.dex + native libs added"
 
 echo "=== 8. Zipalign ==="
 $ZIPALIGN -f -p 4 "$B/app-unsigned.apk" "$B/app-aligned.apk"
