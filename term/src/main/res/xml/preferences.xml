@@ -150,6 +150,19 @@
                 android:summaryOn="@string/use_keyboard_shortcuts_summary_on"
                 android:summaryOff="@string/use_keyboard_shortcuts_summary_off" />
 
+        <CheckBoxPreference android:title="@string/title_show_extrakeys"
+                android:key="show_extrakeys"
+                android:defaultValue="true"
+                android:summaryOn="@string/show_extrakeys_summary_on"
+                android:summaryOff="@string/show_extrakeys_summary_off" />
+
+        <EditTextPreference
+                android:key="extra_keys"
+                android:title="@string/title_extra_keys"
+                android:summary="@string/summary_extra_keys"
+                android:defaultValue='[["ESC","TAB","CTRL","ALT","HOME","UP","END"],["BKSP","DEL","LEFT","DOWN","RIGHT","PGUP","PGDN"]]'
+                android:dialogTitle="@string/dialog_title_extra_keys" />
+
         </PreferenceCategory>
 
     <PreferenceCategory

@@ -194,4 +194,11 @@
   <string name="colorvalue_label_lock_button_column">LOCK</string>
   <string name="colorvalue_icon_text_entry_hint">Enter icon text</string>
   <!-- END SHORTCUT RELATED STRINGS -->
+  <!-- Extra keys -->
+  <string name="title_show_extrakeys">Show virtual keys</string>
+  <string name="show_extrakeys_summary_on">Virtual keys bar is visible</string>
+  <string name="show_extrakeys_summary_off">Virtual keys bar is hidden</string>
+  <string name="title_extra_keys">Virtual keys layout</string>
+  <string name="summary_extra_keys">JSON array of arrays defining virtual keys</string>
+  <string name="dialog_title_extra_keys">Virtual Keys Configuration</string>
 </resources>

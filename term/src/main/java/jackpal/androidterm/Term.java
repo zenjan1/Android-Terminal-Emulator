@@ -1117,9 +1117,9 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
             }
         });
 
-        // Show extra keys by default
-        mExtraKeysVisible = true;
-        mExtraKeysView.setVisibility(View.VISIBLE);
+        // Show extra keys based on preference
+        mExtraKeysVisible = prefs.getBoolean("show_extrakeys", true);
+        mExtraKeysView.setVisibility(mExtraKeysVisible ? View.VISIBLE : View.GONE);
     }
 
     private void toggleExtraKeys() {
