@@ -158,21 +158,49 @@ echo "=== 6. Convert to DEX ==="
 dx --dex --output="$B/classes.dex" "$B/classes.jar" 2>&1 | tail -3
 echo "  DEX: $(ls -lh $B/classes.dex 2>/dev/null | awk '{print $5}')"
 
+echo "=== 6b. Compile native libraries ==="
+CLANG="/data/data/com.termux/files/usr/bin/aarch64-linux-android-clang++"
+mkdir -p "$B/lib/arm64-v8a"
+if command -v "$CLANG" > /dev/null 2>&1; then
+    # libjackpal-termexec2.so
+    if [ -f libtermexec/src/main/cpp/process.cpp ]; then
+        $CLANG -shared -fPIC -O2 \
+            -o "$B/lib/arm64-v8a/libjackpal-termexec2.so" \
+            libtermexec/src/main/cpp/process.cpp \
+            -landroid -llog
+        echo "  libjackpal-termexec2.so compiled"
+    fi
+    # libjackpal-androidterm5.so
+    if [ -f term/src/main/cpp/termExec.cpp ]; then
+        $CLANG -shared -fPIC -O2 \
+            -o "$B/lib/arm64-v8a/libjackpal-androidterm5.so" \
+            term/src/main/cpp/termExec.cpp term/src/main/cpp/common.cpp \
+            -landroid -llog
+        echo "  libjackpal-androidterm5.so compiled"
+    fi
+    # Bundle libc++_shared.so
+    NDK_LIBCXX="$HOME/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so"
+    if [ -f "$NDK_LIBCXX" ]; then
+        cp "$NDK_LIBCXX" "$B/lib/arm64-v8a/libc++_shared.so"
+        echo "  libc++_shared.so bundled"
+    fi
+else
+    echo "  WARNING: clang++ not found, native libs not compiled"
+fi
+
 echo "=== 7. Assemble APK ==="
 cp "$B/resources.apk" "$B/app-unsigned.apk"
 cd "$B"
 if [ -f classes.dex ]; then
     zip app-unsigned.apk classes.dex > /dev/null
+    echo "  classes.dex added"
 fi
-# Bundle libc++_shared.so for native libs compiled with clang++
-NDK_LIBCXX="$HOME/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so"
-if [ -d lib/arm64-v8a ] && [ -f "$NDK_LIBCXX" ]; then
-    cp "$NDK_LIBCXX" lib/arm64-v8a/libc++_shared.so
-    zip app-unsigned.apk lib/arm64-v8a/libc++_shared.so > /dev/null
-    echo "  libc++_shared.so bundled"
+# Add native libraries
+if [ -d lib/arm64-v8a ]; then
+    zip -r app-unsigned.apk lib/ > /dev/null
+    echo "  native libs: $(find lib/arm64-v8a -name '*.so' | tr '\n' ' ')"
 fi
 cd - > /dev/null
-echo "  classes.dex + native libs added"
 
 echo "=== 8. Zipalign ==="
 $ZIPALIGN -f -p 4 "$B/app-unsigned.apk" "$B/app-aligned.apk"
