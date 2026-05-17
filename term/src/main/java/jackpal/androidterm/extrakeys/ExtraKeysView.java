@@ -4,16 +4,15 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
-import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.GridLayout;
-import android.widget.TextView;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Simplified extra keys view based on GridLayout.
- * Uses custom KeyButton views to avoid Button theming issues.
+ * Uses custom-drawn KeyButton views to avoid Android theming issues.
  */
 public class ExtraKeysView extends GridLayout {
 
@@ -44,14 +43,12 @@ public class ExtraKeysView extends GridLayout {
     private ScheduledExecutorService mScheduler;
     private Handler mHandler;
     private int mLongPressCount;
-    private boolean mCtrlDown, mAltDown, mShiftDown, mFnDown;
 
-    private static final int BTN_BG = 0xFF303030;
-    private static final int BTN_PRESSED = 0xFF505050;
-    private static final int BTN_SPECIAL_ACTIVE = 0xFF606060;
-    private static final int BTN_TEXT = 0xFFE0E0E0;
-    private static final int BTN_TEXT_ACTIVE = 0xFFFFFFFF;
-    private static final float CORNER_RADIUS = 8f;
+    private static final int BTN_BG = Color.rgb(48, 48, 48);
+    private static final int BTN_PRESSED = Color.rgb(96, 96, 96);
+    private static final int BTN_SPECIAL_ACTIVE = Color.rgb(96, 96, 96);
+    private static final int BTN_TEXT = Color.rgb(224, 224, 224);
+    private static final int BTN_TEXT_ACTIVE = Color.WHITE;
 
     public ExtraKeysView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -76,13 +73,10 @@ public class ExtraKeysView extends GridLayout {
         for (int row = 0; row < buttons.length; row++) {
             for (int col = 0; col < buttons[row].length; col++) {
                 final ExtraKeyButton btnInfo = buttons[row][col];
-                final KeyButton btn = new KeyButton(getContext());
-                btn.setKeyText(btnInfo.getDisplay());
-                btn.setKeyBgColor(BTN_BG);
-                btn.setKeyTextColor(BTN_TEXT);
+                final KeyButton btn = new KeyButton(getContext(), btnInfo.getDisplay());
 
                 if (btnInfo.isSpecial()) {
-                    updateSpecialButtonAppearance(btn, btnInfo.getKey());
+                    btn.setActive(mSpecialButtonStates.getOrDefault(btnInfo.getKey(), false));
                 }
 
                 final ExtraKeyButton finalBtnInfo = btnInfo;
@@ -90,7 +84,9 @@ public class ExtraKeysView extends GridLayout {
                     @Override
                     public void onClick(View v) {
                         if (finalBtnInfo.isSpecial()) {
-                            toggleSpecial(finalBtnInfo.getKey(), btn);
+                            boolean newState = !mSpecialButtonStates.getOrDefault(finalBtnInfo.getKey(), false);
+                            mSpecialButtonStates.put(finalBtnInfo.getKey(), newState);
+                            btn.setActive(newState);
                         } else if (finalBtnInfo.isMacro()) {
                             fireText(finalBtnInfo.getMacro());
                         } else {
@@ -104,8 +100,7 @@ public class ExtraKeysView extends GridLayout {
                     public boolean onTouch(View v, MotionEvent event) {
                         switch (event.getAction()) {
                             case MotionEvent.ACTION_DOWN:
-                                btn.setKeyBgColor(BTN_PRESSED);
-                                btn.setKeyTextColor(BTN_TEXT_ACTIVE);
+                                btn.setPressed(true);
                                 if (REPETITIVE_KEYS.contains(finalBtnInfo.getKey()) && !finalBtnInfo.isSpecial()) {
                                     mLongPressCount = 0;
                                     mScheduler = Executors.newSingleThreadScheduledExecutor();
@@ -120,9 +115,7 @@ public class ExtraKeysView extends GridLayout {
                                 return true;
                             case MotionEvent.ACTION_UP:
                             case MotionEvent.ACTION_CANCEL:
-                                int bg = isActive(finalBtnInfo.getKey()) ? BTN_SPECIAL_ACTIVE : BTN_BG;
-                                btn.setKeyBgColor(bg);
-                                btn.setKeyTextColor(isActive(finalBtnInfo.getKey()) ? BTN_TEXT_ACTIVE : BTN_TEXT);
+                                btn.setPressed(false);
                                 if (mScheduler != null) {
                                     mScheduler.shutdownNow();
                                     mScheduler = null;
@@ -144,23 +137,6 @@ public class ExtraKeysView extends GridLayout {
                 addView(btn);
             }
         }
-    }
-
-    private void toggleSpecial(String key, KeyButton btn) {
-        boolean newState = !mSpecialButtonStates.getOrDefault(key, false);
-        mSpecialButtonStates.put(key, newState);
-        btn.setKeyBgColor(newState ? BTN_SPECIAL_ACTIVE : BTN_BG);
-        btn.setKeyTextColor(newState ? BTN_TEXT_ACTIVE : BTN_TEXT);
-    }
-
-    private void updateSpecialButtonAppearance(KeyButton btn, String key) {
-        boolean active = mSpecialButtonStates.getOrDefault(key, false);
-        btn.setKeyBgColor(active ? BTN_SPECIAL_ACTIVE : BTN_BG);
-        btn.setKeyTextColor(active ? BTN_TEXT_ACTIVE : BTN_TEXT);
-    }
-
-    private boolean isActive(String key) {
-        return mSpecialButtonStates.getOrDefault(key, false);
     }
 
     private void fireKey(String keyName) {
@@ -187,51 +163,70 @@ public class ExtraKeysView extends GridLayout {
     }
 
     /**
-     * Custom key button that draws its own background and text to avoid theming issues.
+     * A button that draws itself, completely bypassing Android theming.
      */
     static class KeyButton extends View {
-        private final Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final RectF bgRect = new RectF();
-        private String text = "";
-        private int bgColor = BTN_BG;
-        private int textColor = BTN_TEXT;
+        private final Paint bgPaint;
+        private final Paint textPaint;
+        private final Rect textBounds;
+        private final String text;
+        private boolean isPressed;
+        private boolean isActive;
 
-        public KeyButton(Context context) {
+        public KeyButton(Context context, String text) {
             super(context);
+            this.text = text;
+            this.isPressed = false;
+            this.isActive = false;
+
+            bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             bgPaint.setStyle(Paint.Style.FILL);
-            textPaint.setTextSize(28f);
+
+            textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            textPaint.setStyle(Paint.Style.FILL);
             textPaint.setTextAlign(Paint.Align.CENTER);
+            textPaint.setTextSize(26f);
             textPaint.setFakeBoldText(true);
+
+            textBounds = new Rect();
+            textPaint.getTextBounds(text, 0, text.length(), textBounds);
+
+            setWillNotDraw(false);
             setClickable(true);
         }
 
-        public void setKeyText(String t) {
-            text = t;
+        public void setPressed(boolean pressed) {
+            this.isPressed = pressed;
             invalidate();
         }
 
-        public void setKeyBgColor(int color) {
-            bgColor = color;
-            invalidate();
-        }
-
-        public void setKeyTextColor(int color) {
-            textColor = color;
+        public void setActive(boolean active) {
+            this.isActive = active;
             invalidate();
         }
 
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            bgPaint.setColor(bgColor);
-            bgRect.set(0, 0, getWidth(), getHeight());
-            canvas.drawRoundRect(bgRect, CORNER_RADIUS, CORNER_RADIUS, bgPaint);
+            int width = getWidth();
+            int height = getHeight();
 
-            textPaint.setColor(textColor);
-            float textX = getWidth() / 2f;
-            float textY = getHeight() / 2f - (textPaint.descent() + textPaint.ascent()) / 2f;
-            canvas.drawText(text, textX, textY, textPaint);
+            // Draw background
+            if (isPressed) {
+                bgPaint.setColor(BTN_PRESSED);
+            } else if (isActive) {
+                bgPaint.setColor(BTN_SPECIAL_ACTIVE);
+            } else {
+                bgPaint.setColor(BTN_BG);
+            }
+            RectF rect = new RectF(0, 0, width, height);
+            canvas.drawRoundRect(rect, 8f, 8f, bgPaint);
+
+            // Draw text
+            textPaint.setColor(isPressed ? BTN_TEXT_ACTIVE : BTN_TEXT);
+            float cx = width / 2f;
+            float cy = height / 2f - (textPaint.descent() + textPaint.ascent()) / 2f;
+            canvas.drawText(text, cx, cy, textPaint);
         }
     }
 }

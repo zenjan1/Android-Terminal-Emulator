@@ -15,7 +15,7 @@
     <jackpal.androidterm.extrakeys.ExtraKeysView
         android:id="@+id/extra_keys"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
+        android:layout_height="50dp"
         android:visibility="gone"
         android:background="#1a1a1a"
         />
