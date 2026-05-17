@@ -141,14 +141,7 @@ javac -d "$B/classes" \
     $JAVA_FILES 2>&1 | tail -3
 echo "  Java compiled"
 
-echo "=== 5. Merge AAR jars with project classes ==="
-# Copy all AAR classes.jar files into our classes dir
-for jar in $(find "$B/libs" -name 'classes.jar'); do
-    cd "$(dirname "$jar")"
-    jar xf classes.jar -d "$B/classes" 2>/dev/null || true
-    cd - > /dev/null
-done
-
+echo "=== 5. Create jar from classes ==="
 cd "$B/classes"
 jar cf ../classes.jar .
 cd - > /dev/null
@@ -174,7 +167,7 @@ if command -v "$CLANG" > /dev/null 2>&1; then
     if [ -f term/src/main/cpp/termExec.cpp ]; then
         $CLANG -shared -fPIC -O2 \
             -o "$B/lib/arm64-v8a/libjackpal-androidterm5.so" \
-            term/src/main/cpp/termExec.cpp term/src/main/cpp/common.cpp \
+            term/src/main/cpp/termExec.cpp term/src/main/cpp/common.cpp term/src/main/cpp/fileCompat.cpp \
             -landroid -llog
         echo "  libjackpal-androidterm5.so compiled"
     fi
