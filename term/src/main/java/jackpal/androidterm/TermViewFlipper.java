@@ -33,7 +33,7 @@ import jackpal.androidterm.emulatorview.EmulatorView;
 import jackpal.androidterm.emulatorview.TermSession;
 import jackpal.androidterm.emulatorview.UpdateCallback;
 
-import jackpal.androidterm.compat.AndroidCompat;
+
 import jackpal.androidterm.util.TermSettings;
 
 public class TermViewFlipper extends ViewFlipper implements Iterable<View> {

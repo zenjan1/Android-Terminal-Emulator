@@ -1,5 +1,19 @@
-include ':emulatorview', ':libtermexec'
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "Android-Terminal-Emulator"
+include ':emulatorview'
+include ':libtermexec'
 include ':term'
-include ':samples:intents'
-include ':samples:pathbroadcasts'
-include ':samples:telnet'

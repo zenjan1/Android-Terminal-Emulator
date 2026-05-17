@@ -16,7 +16,7 @@
 
 package jackpal.androidterm.util;
 
-import jackpal.androidterm.compat.Base64;
+import android.util.Base64;
 
 import android.content.Context;
 import android.content.SharedPreferences;

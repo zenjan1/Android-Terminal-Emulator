@@ -15,6 +15,7 @@
  */
 
 #include "process.h"
+#include <jni.h>
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -26,8 +27,6 @@
 #include <unistd.h>
 #include <termios.h>
 #include <signal.h>
-
-typedef unsigned short char16_t;
 
 class String8 {
 public:
@@ -41,7 +40,7 @@ public:
         }
     }
 
-    void set(const char16_t* o, size_t numChars) {
+    void set(const jchar* o, size_t numChars) {
         if (mString) {
             free(mString);
         }
