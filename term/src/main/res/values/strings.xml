@@ -26,6 +26,12 @@
    <string name="send_email">Email to</string>
    <string name="special_keys">Special keys</string>
    <string name="toggle_soft_keyboard">Toggle soft keyboard</string>
+   <string name="open_ssh">Open SSH</string>
+   <string name="ssh_dialog_title">SSH Connection</string>
+   <string name="ssh_host_hint">Host (e.g., user@host)</string>
+   <string name="ssh_port_hint">Port (optional, default 22)</string>
+   <string name="ssh_connect">Connect</string>
+   <string name="ssh_cancel">Cancel</string>
 
    <string name="reset_toast_notification">This window\'s terminal state has been reset.</string>
 

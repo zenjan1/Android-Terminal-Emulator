@@ -742,6 +742,8 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
             confirmCloseWindow();
         } else if (id == R.id.menu_window_list) {
             startActivityForResult(new Intent(this, WindowList.class), REQUEST_CHOOSE_WINDOW);
+        } else if (id == R.id.menu_openssh) {
+            doOpenSSH();
         } else if (id == R.id.menu_reset) {
             doResetTerminal();
             Toast toast = Toast.makeText(this,R.string.reset_toast_notification,Toast.LENGTH_LONG);
@@ -1246,5 +1248,90 @@ public class Term extends Activity implements UpdateCallback, SharedPreferences.
         List<ResolveInfo> handlers = pm.queryIntentActivities(openLink, 0);
         if(handlers.size() > 0)
             startActivity(openLink);
+    }
+
+    /**
+     * Open an SSH connection dialog
+     */
+    private void doOpenSSH() {
+        // Create a dialog to get SSH connection details
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle(R.string.ssh_dialog_title);
+        
+        // Inflate the dialog layout
+        android.view.LayoutInflater inflater = getLayoutInflater();
+        android.view.View dialogView = inflater.inflate(android.R.layout.select_dialog_item, null);
+        
+        // Create input fields programmatically
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(40, 20, 40, 20);
+        
+        // Host input
+        final android.widget.EditText hostInput = new android.widget.EditText(this);
+        hostInput.setHint(R.string.ssh_host_hint);
+        hostInput.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        layout.addView(hostInput);
+        
+        // Port input (optional)
+        final android.widget.EditText portInput = new android.widget.EditText(this);
+        portInput.setHint(R.string.ssh_port_hint);
+        portInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        layout.addView(portInput);
+        
+        builder.setView(layout);
+        
+        // Set up the buttons
+        builder.setPositiveButton(R.string.ssh_connect, new android.content.DialogInterface.OnClickListener() {
+            public void onClick(android.content.DialogInterface dialog, int id) {
+                String host = hostInput.getText().toString().trim();
+                String portStr = portInput.getText().toString().trim();
+                
+                if (!host.isEmpty()) {
+                    // Build SSH command
+                    String sshCommand = "ssh ";
+                    if (!portStr.isEmpty()) {
+                        sshCommand += "-p " + portStr + " ";
+                    }
+                    sshCommand += host;
+                    
+                    // Create new terminal session with SSH command
+                    createSSHSession(sshCommand);
+                }
+            }
+        });
+        
+        builder.setNegativeButton(R.string.ssh_cancel, new android.content.DialogInterface.OnClickListener() {
+            public void onClick(android.content.DialogInterface dialog, int id) {
+                dialog.cancel();
+            }
+        });
+        
+        // Show the dialog
+        builder.show();
+    }
+    
+    /**
+     * Create a terminal session with SSH command
+     */
+    private void createSSHSession(String command) {
+        if (mTermSessions == null) {
+            Log.w(TermDebug.LOG_TAG, "Couldn't create SSH session because mTermSessions == null");
+            return;
+        }
+
+        try {
+            TermSession session = createTermSession(this, mSettings, command);
+
+            mTermSessions.add(session);
+
+            TermView view = createEmulatorView(session);
+            view.updatePrefs(mSettings);
+
+            mViewFlipper.addView(view);
+            mViewFlipper.setDisplayedChild(mViewFlipper.getChildCount()-1);
+        } catch (IOException e) {
+            Toast.makeText(this, "Failed to create SSH session", Toast.LENGTH_SHORT).show();
+        }
     }
 }
